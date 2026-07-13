@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    username: postgres
+    password: ${}
+    url: jdbc:postgres://localhost:5432/mydb
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+  sql:
+    init:
+      mode: embedded
+
+logging:
+  level:
+    org.hibernate.sql: DEBUG
+    org.hibernate.jdbc.bind: DEBUG
