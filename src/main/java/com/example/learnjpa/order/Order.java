@@ -2,10 +2,9 @@ package com.example.learnjpa.order;
 
 import com.example.learnjpa.common.AuditingEntity;
 import com.example.learnjpa.member.Member;
+import com.example.learnjpa.order.exception.InvalidOrderStatusException;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,10 +36,19 @@ public class Order extends AuditingEntity {
     protected Order() {
         status = OrderStatus.ORDERED;
     }
+
+    public void cancel() {
+        if (status == OrderStatus.CANCELED || status == OrderStatus.DELIVERED) {
+            throw new InvalidOrderStatusException(status, OrderStatus.CANCELED);
+        }
+        status = OrderStatus.CANCELED;
+    }
+
+    public void deliver() {
+        if (status == OrderStatus.CANCELED || status == OrderStatus.DELIVERED) {
+            throw new InvalidOrderStatusException(status, OrderStatus.DELIVERED);
+        }
+        status = OrderStatus.DELIVERED;
+    }
 }
 
-enum OrderStatus {
-    ORDERED,
-    CANCELED,
-    DELIVERED,
-}

@@ -17,10 +17,10 @@ public class OrderProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_price", nullable = false)
+    @Column(name = "order_price", nullable = false, updatable = false)
     private Long orderPrice;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private Long quantity;
 
     @ManyToOne(fetch = FetchType.LAZY)
