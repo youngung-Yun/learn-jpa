@@ -1,17 +1,21 @@
 package com.example.learnjpa.member;
 
+import com.example.learnjpa.config.JpaConfig;
 import com.example.learnjpa.member.dto.request.SignupRequest;
 import com.example.learnjpa.member.exception.DuplicateEmailException;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@DataJpaTest
+@Import({JpaConfig.class, MemberService.class})
 @Transactional
 class MemberServiceIntegrationTest {
 
@@ -21,12 +25,18 @@ class MemberServiceIntegrationTest {
     @Autowired
     MemberService memberService;
 
+    @Autowired
+    EntityManager entityManager;
+
     @Test
     @DisplayName("회원가입 성공")
     void signup_success() {
         var request = new SignupRequest("name", "test@example.com");
 
         var resultId = memberService.signup(request);
+
+        entityManager.flush();
+        entityManager.clear();
 
         var found = memberRepository.findById(resultId)
                 .orElseThrow();
@@ -44,7 +54,8 @@ class MemberServiceIntegrationTest {
                 .name("name1")
                 .email(email)
                 .build();
-        memberRepository.save(existMember);
+        memberRepository.saveAndFlush(existMember);
+        entityManager.clear();
 
         var request = new SignupRequest("name2", email);
 
