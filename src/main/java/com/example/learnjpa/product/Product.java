@@ -42,11 +42,16 @@ public class Product extends AuditingEntity {
     }
 
     public void increaseStockQuantity(long increase) {
+        if (increase < 0) {
+            throw new IllegalArgumentException("음수의 재고를 감소시킬 수 없습니다.");
+        }
         this.stockQuantity += increase;
     }
 
     public void decreaseStockQuantity(long decrease) {
-        if (this.stockQuantity < decrease) {
+        if (decrease < 0) {
+            throw new IllegalArgumentException("음수의 재고를 감소시킬 수 없습니다.");
+        } else if (this.stockQuantity < decrease) {
             throw new InsufficientStockException();
         }
         stockQuantity -= decrease;

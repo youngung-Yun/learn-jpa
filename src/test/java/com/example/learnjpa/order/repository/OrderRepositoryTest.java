@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
-@DataJpaTest
+@DataJpaTest(showSql = false)
 @Import(JpaConfig.class)
 class OrderRepositoryTest {
 

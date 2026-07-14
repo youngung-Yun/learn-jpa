@@ -47,6 +47,21 @@ class ProductTest {
     }
 
     @Test
+    @DisplayName("음수의 재고 증가 시도하여 예외 발생")
+    void increase_negative_quantity_throw() {
+        long quantity = -10L;
+
+        Product product = Product.builder()
+                .name("name")
+                .price(10_000L)
+                .stockQuantity(100L)
+                .build();
+
+        assertThatThrownBy(() -> product.increaseStockQuantity(quantity))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     @DisplayName("현재 재고보다 많은 재고 감소로 예외 발생")
     void decrease_stock_quantity_throw() {
 
@@ -60,6 +75,21 @@ class ProductTest {
 
         assertThatThrownBy(() -> product.decreaseStockQuantity(100L))
                 .isInstanceOf(InsufficientStockException.class);
+    }
+
+    @Test
+    @DisplayName("음수의 재고 감소 시도하여 예외 발생")
+    void decrease_negative_quantity_throw() {
+        long quantity = -10L;
+
+        Product product = Product.builder()
+                .name("name")
+                .price(10_000L)
+                .stockQuantity(100L)
+                .build();
+
+        assertThatThrownBy(() -> product.decreaseStockQuantity(quantity))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

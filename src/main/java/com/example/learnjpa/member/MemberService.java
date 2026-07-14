@@ -1,16 +1,25 @@
 package com.example.learnjpa.member;
 
 import com.example.learnjpa.member.dto.request.SignupRequest;
+import com.example.learnjpa.member.dto.response.MemberResponse;
 import com.example.learnjpa.member.exception.DuplicateEmailException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
 public class MemberService {
 
     private final MemberRepository memberRepository;
+
+    public MemberResponse getById(Long id) {
+        var member = memberRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "유효하지 않은 멤버 id입니다: %d".formatted(id)
+                ));
+        return toResponse(member);
+    }
 
     @Transactional
     public Long signup(SignupRequest request) {
@@ -27,6 +36,14 @@ public class MemberService {
         return Member.builder()
                 .name(request.name())
                 .email(request.email())
+                .build();
+    }
+
+    private MemberResponse toResponse(Member member) {
+        return MemberResponse.builder()
+                .id(member.getId())
+                .name(member.getName())
+                .email(member.getEmail())
                 .build();
     }
 }

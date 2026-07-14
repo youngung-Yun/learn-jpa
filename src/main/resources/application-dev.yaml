@@ -12,8 +12,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
 
 logging:
   level:
-    org.hibernate.sql: TRACE
+    org.hibernate.SQL: TRACE
     org.hibernate.jdbc.bind: TRACE

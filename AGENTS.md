@@ -19,46 +19,50 @@ Spring Data JPA의 Repository 추상화, 쿼리 메서드, JPQL과 Hibernate의 
 - Lombok
 - JUnit 5
 
-## 핵심 도메인
+## 핵심 테이블
 
-### Member
+### `members`
 
-- `id`
-- `name`
-- `email`
+- `id BIGINT`: Identity 기본 키
+- `name VARCHAR(50)`: 필수
+- `email VARCHAR(255)`: 필수, 유니크
+- `created_at TIMESTAMP`: 필수, 기본값은 현재 시각
+- `updated_at TIMESTAMP`: 필수, 기본값은 현재 시각
 
-### Product
+### `products`
 
-- `id`
-- `name`
-- `price`
-- `stockQuantity`
+- `id BIGINT`: Identity 기본 키
+- `name VARCHAR(100)`: 필수
+- `price BIGINT`: 필수, 0 이상
+- `stock_quantity BIGINT`: 필수, 0 이상, 기본값 0
+- `created_at TIMESTAMP`: 필수, 기본값은 현재 시각
+- `updated_at TIMESTAMP`: 필수, 기본값은 현재 시각
 
-### Order
+### `orders`
 
-- `id`
-- `member`
-- `orderDate`
-- `status`
-- `orderItems`
+- `id BIGINT`: Identity 기본 키
+- `member_id BIGINT`: 필수, `members.id` 외래 키
+- `ordered_at TIMESTAMP`: 필수, 기본값은 현재 시각
+- `status VARCHAR(20)`: 필수, `ORDERED`, `CANCELED`, `DELIVERED` 중 하나이며 기본값은 `ORDERED`
+- `updated_at TIMESTAMP`: 필수, 기본값은 현재 시각
 
-### OrderItem
+### `order_products`
 
-- `id`
-- `order`
-- `product`
-- `orderPrice`
-- `quantity`
+- `id BIGINT`: Identity 기본 키
+- `order_id BIGINT`: 필수, `orders.id` 외래 키
+- `product_id BIGINT`: 필수, `products.id` 외래 키
+- `order_price BIGINT`: 필수, 0 이상인 주문 당시 상품 단가
+- `quantity BIGINT`: 필수, 0보다 큰 주문 수량
 
 ### 연관관계
 
 ```text
 Member  1 ─── N Order
-Order   1 ─── N OrderItem
-Product 1 ─── N OrderItem
+Order   1 ─── N OrderProduct
+Product 1 ─── N OrderProduct
 ```
 
-`OrderItem`을 별도 엔티티로 둔다. 주문과 상품의 다대다 관계를 `@ManyToMany`로 직접 구현하지 않고, 주문 가격과 수량을 가진 연결 엔티티로 풀어낸다.
+`OrderProduct`(`order_products`)를 별도 연결 엔티티로 둔다. 주문과 상품의 다대다 관계를 `@ManyToMany`로 직접 구현하지 않고, 주문 당시 상품 단가와 수량을 가진 연결 엔티티로 풀어낸다.
 
 ## 필수 기능
 
