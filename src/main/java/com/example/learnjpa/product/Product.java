@@ -51,4 +51,8 @@ public class Product extends AuditingEntity {
         }
         stockQuantity -= decrease;
     }
+
+    public void addOrderProduct(OrderProduct orderProduct) {
+        orderProductList.add(orderProduct);
+    }
 }

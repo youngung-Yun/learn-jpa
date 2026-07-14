@@ -35,4 +35,8 @@ public class Member extends AuditingEntity {
         this.name = name;
         this.email = email;
     }
+
+    public void addOrder(Order order) {
+        orderList.add(order);
+    }
 }

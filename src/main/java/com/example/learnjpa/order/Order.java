@@ -4,7 +4,9 @@ import com.example.learnjpa.common.AuditingEntity;
 import com.example.learnjpa.member.Member;
 import com.example.learnjpa.order.exception.InvalidOrderStatusException;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.List;
         @AttributeOverride(name = "createdAt",
                 column = @Column(name = "ordered_at", nullable = false, updatable = false))
 })
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order extends AuditingEntity {
 
     @Id
@@ -33,8 +36,10 @@ public class Order extends AuditingEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     private List<OrderProduct> orderProductList = new ArrayList<>();
 
-    protected Order() {
+    public Order(Member member) {
+        this.member = member;
         status = OrderStatus.ORDERED;
+        member.addOrder(this);
     }
 
     public void cancel() {
@@ -49,6 +54,10 @@ public class Order extends AuditingEntity {
             throw new InvalidOrderStatusException(status, OrderStatus.DELIVERED);
         }
         status = OrderStatus.DELIVERED;
+    }
+
+    public void addOrderProduct(OrderProduct orderProduct) {
+        orderProductList.add(orderProduct);
     }
 }
 

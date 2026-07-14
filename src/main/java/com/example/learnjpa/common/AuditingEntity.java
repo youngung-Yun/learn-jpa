@@ -16,7 +16,7 @@ import java.time.Instant;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 @EntityListeners(AuditingEntityListener.class)
-public class AuditingEntity {
+public abstract class AuditingEntity {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

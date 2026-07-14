@@ -32,8 +32,13 @@ public class OrderProduct {
     private Product product;
 
     @Builder
-    public OrderProduct(Long orderPrice, Long quantity) {
+    public OrderProduct(Order order, Product product, Long orderPrice, Long quantity) {
+        this.order = order;
+        this.product = product;
         this.orderPrice = orderPrice;
         this.quantity = quantity;
+
+        order.addOrderProduct(this);
+        product.addOrderProduct(this);
     }
 }

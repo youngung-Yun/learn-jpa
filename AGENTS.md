@@ -284,3 +284,343 @@ Reservation
 미니 주문 관리 API + H2 + 서비스 테스트 + Fetch Join 한 번이 가장 적절합니다.
 
 인증, 결제, Docker, Redis, QueryDSL, 프론트엔드는 제외하세요. 주말 프로젝트의 목적은 기능 수를 늘리는 것이 아니라, 하나의 주문 처리 흐름을 통해 JPA가 언제 INSERT·SELECT·UPDATE를 실행하는지 직접 확인하는 것입니다.
+
+이 프로젝트는 엔티티 매핑 테스트 → Repository 테스트 → 주문 서비스 통합 테스트 → 동시성 테스트 순서로 하면 좋아.
+
+---
+
+1. 엔티티 저장 테스트
+
+먼저 테이블과 엔티티 매핑이 정상인지 확인해.
+
+@DataJpaTest
+class MemberRepositoryTest {
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Test
+    void 회원을_저장한다() {
+        Member member = new Member("yun", "yun@example.com");
+
+        Member savedMember = memberRepository.save(member);
+
+        assertThat(savedMember.getId()).isNotNull();
+        assertThat(savedMember.getName()).isEqualTo("yun");
+        assertThat(savedMember.getEmail()).isEqualTo("yun@example.com");
+        assertThat(savedMember.getCreatedAt()).isNotNull();
+        assertThat(savedMember.getUpdatedAt()).isNotNull();
+    }
+}
+
+Auditing을 사용한다면 테스트에서도 활성화되어야 해.
+
+@TestConfiguration
+@EnableJpaAuditing
+class JpaAuditingTestConfig {
+}
+@DataJpaTest
+@Import(JpaAuditingTestConfig.class)
+class MemberRepositoryTest {
+}
+
+애플리케이션 설정 클래스에서 이미 @EnableJpaAuditing이 로딩된다면 별도 설정이 필요 없을 수도 있어.
+
+2. 상품 재고 테스트
+
+도메인 로직은 DB 없이 단위 테스트부터 해도 돼.
+
+class ProductTest {
+
+    @Test
+    void 재고를_감소한다() {
+        Product product = new Product("키보드", 50_000L, 10L);
+
+        product.decreaseStock(3L);
+
+        assertThat(product.getStockQuantity()).isEqualTo(7L);
+    }
+
+    @Test
+    void 재고보다_많이_주문하면_실패한다() {
+        Product product = new Product("키보드", 50_000L, 2L);
+
+        assertThatThrownBy(() -> product.decreaseStock(3L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("재고가 부족합니다.");
+    }
+
+    @Test
+    void 재고를_복구한다() {
+        Product product = new Product("키보드", 50_000L, 10L);
+
+        product.increaseStock(3L);
+
+        assertThat(product.getStockQuantity()).isEqualTo(13L);
+    }
+}
+
+이 테스트는 @SpringBootTest나 @DataJpaTest가 필요 없어.
+
+3. 주문 저장과 Cascade 테스트
+
+Order → OrderItem에 CascadeType.PERSIST를 썼다면 주문만 저장해도 주문 항목이 저장되는지 확인해야 해.
+
+@DataJpaTest
+class OrderRepositoryTest {
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Test
+    void 주문과_주문항목을_함께_저장한다() {
+        Member member = new Member("yun", "yun@example.com");
+        Product product = new Product("키보드", 50_000L, 10L);
+
+        entityManager.persist(member);
+        entityManager.persist(product);
+
+        OrderItem orderItem =
+                new OrderItem(product, product.getPrice(), 2L);
+
+        Order order = new Order(member);
+        order.addOrderItem(orderItem);
+
+        orderRepository.save(order);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Order foundOrder = orderRepository.findById(order.getId())
+                .orElseThrow();
+
+        assertThat(foundOrder.getOrderItems()).hasSize(1);
+
+        OrderItem foundItem = foundOrder.getOrderItems().getFirst();
+
+        assertThat(foundItem.getProduct().getId())
+                .isEqualTo(product.getId());
+
+        assertThat(foundItem.getQuantity()).isEqualTo(2L);
+        assertThat(foundItem.getOrderPrice()).isEqualTo(50_000L);
+    }
+}
+
+flush()와 clear()를 넣는 게 중요해.
+
+flush
+→ 실제 INSERT SQL 실행
+
+clear
+→ 영속성 컨텍스트 초기화
+
+다시 조회
+→ DB에 정말 저장됐는지 검증
+
+clear() 없이 조회하면 DB가 아니라 1차 캐시에서 객체를 가져올 수 있어.
+
+4. 연관관계 테스트
+
+양방향 관계를 사용한다면 양쪽 객체 상태가 모두 맞는지 테스트해.
+
+class OrderTest {
+
+    @Test
+    void 주문항목을_추가하면_양쪽_연관관계가_설정된다() {
+        Product product = new Product("마우스", 30_000L, 10L);
+        OrderItem orderItem = new OrderItem(product, 30_000L, 2L);
+
+        Order order = new Order();
+        order.addOrderItem(orderItem);
+
+        assertThat(order.getOrderItems()).contains(orderItem);
+        assertThat(orderItem.getOrder()).isSameAs(order);
+    }
+}
+
+편의 메서드는 대략 이렇게 되어 있어야 해.
+
+public void addOrderItem(OrderItem orderItem) {
+orderItems.add(orderItem);
+orderItem.assignOrder(this);
+}
+5. 주문 서비스 통합 테스트
+
+주문 생성은 여러 엔티티와 트랜잭션이 연결되므로 @SpringBootTest로 확인하는 게 좋아.
+
+@SpringBootTest
+@Transactional
+class OrderServiceTest {
+
+    @Autowired
+    private OrderService orderService;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Test
+    void 상품을_주문한다() {
+        Member member = memberRepository.save(
+                new Member("yun", "yun@example.com")
+        );
+
+        Product product = productRepository.save(
+                new Product("키보드", 50_000L, 10L)
+        );
+
+        Long orderId = orderService.order(
+                member.getId(),
+                List.of(new OrderItemRequest(product.getId(), 2L))
+        );
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow();
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.ORDERED);
+        assertThat(order.getOrderItems()).hasSize(1);
+        assertThat(product.getStockQuantity()).isEqualTo(8L);
+    }
+}
+6. 주문 취소 테스트
+   @Test
+   void 주문을_취소하면_상태가_바뀌고_재고가_복구된다() {
+   Member member = memberRepository.save(
+   new Member("yun", "yun@example.com")
+   );
+
+   Product product = productRepository.save(
+   new Product("키보드", 50_000L, 10L)
+   );
+
+   Long orderId = orderService.order(
+   member.getId(),
+   List.of(new OrderItemRequest(product.getId(), 3L))
+   );
+
+   assertThat(product.getStockQuantity()).isEqualTo(7L);
+
+   orderService.cancel(orderId);
+
+   Order order = orderRepository.findById(orderId)
+   .orElseThrow();
+
+   assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
+   assertThat(product.getStockQuantity()).isEqualTo(10L);
+   }
+
+이미 취소된 주문을 다시 취소하지 못하게 한다면:
+
+@Test
+void 이미_취소된_주문은_다시_취소할_수_없다() {
+Long orderId = createOrder();
+
+    orderService.cancel(orderId);
+
+    assertThatThrownBy(() -> orderService.cancel(orderId))
+            .isInstanceOf(IllegalStateException.class);
+}
+7. 트랜잭션 롤백 테스트
+
+재고 차감 중 일부 상품에서 실패하면 주문 전체가 저장되지 않아야 해.
+
+예를 들어 상품 두 개를 주문하는데 두 번째 상품의 재고가 부족한 경우:
+
+@Test
+void 주문_중_재고가_부족하면_전체가_롤백된다() {
+Member member = memberRepository.save(
+new Member("yun", "yun@example.com")
+);
+
+    Product product1 = productRepository.save(
+            new Product("키보드", 50_000L, 10L)
+    );
+
+    Product product2 = productRepository.save(
+            new Product("마우스", 30_000L, 1L)
+    );
+
+    assertThatThrownBy(() ->
+            orderService.order(
+                    member.getId(),
+                    List.of(
+                            new OrderItemRequest(product1.getId(), 2L),
+                            new OrderItemRequest(product2.getId(), 5L)
+                    )
+            )
+    ).isInstanceOf(IllegalStateException.class);
+
+    assertThat(product1.getStockQuantity()).isEqualTo(10L);
+    assertThat(product2.getStockQuantity()).isEqualTo(1L);
+    assertThat(orderRepository.count()).isZero();
+}
+
+이 테스트가 통과하려면 주문 서비스 메서드에 트랜잭션이 있어야 해.
+
+@Transactional
+public Long order(...) {
+}
+8. N+1 테스트
+
+주문 여러 개를 저장한 뒤 목록 조회 시 SQL 개수를 직접 확인해.
+
+@Test
+void 주문_목록을_조회한다() {
+List<Order> orders = orderRepository.findAll();
+
+    for (Order order : orders) {
+        order.getOrderItems().size();
+
+        for (OrderItem item : order.getOrderItems()) {
+            item.getProduct().getName();
+        }
+    }
+}
+
+로그에서 이런 형태면 N+1이 발생한 거야.
+
+select * from orders
+
+select * from order_items where order_id = ?
+select * from order_items where order_id = ?
+select * from order_items where order_id = ?
+
+@BatchSize 적용 후에는:
+
+select *
+from order_items
+where order_id in (?, ?, ?)
+
+처럼 바뀌는지 보면 돼.
+
+테스트 코드에서 Hibernate Statistics를 사용해서 쿼리 수를 검증할 수도 있지만, 학습 초기에는 SQL 로그를 직접 보는 게 이해하기 좋아.
+
+최소 테스트 목록
+
+주말 프로젝트라면 우선 이 여섯 개만 작성해.
+
+1. 회원 저장 성공
+2. 상품 재고 감소 성공
+3. 재고 부족 시 예외
+4. 주문과 OrderItem Cascade 저장
+5. 주문 취소 시 상태 변경과 재고 복구
+6. 주문 실패 시 전체 트랜잭션 롤백
+
+테스트 의존성은 보통 Spring Boot 프로젝트에 기본 포함돼.
+
+dependencies {
+testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+AssertJ는 다음 import를 사용하면 돼.
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;

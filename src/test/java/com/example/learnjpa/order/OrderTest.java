@@ -1,6 +1,8 @@
 package com.example.learnjpa.order;
 
+import com.example.learnjpa.member.Member;
 import com.example.learnjpa.order.exception.InvalidOrderStatusException;
+import com.example.learnjpa.product.Product;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -49,5 +51,52 @@ class OrderTest {
                 .isInstanceOf(InvalidOrderStatusException.class);
         assertThatThrownBy(() -> order.deliver())
                 .isInstanceOf(InvalidOrderStatusException.class);
+    }
+
+    @Test
+    @DisplayName("Order 생성자로 생성 시 Member와 양방향 연관관계가 생성되는지 확인")
+    void order_create_bidirectional_relation() {
+        var member = Member.builder()
+                .name("name")
+                .email("test@example.com")
+                .build();
+
+        var order = new Order(member);
+
+        assertThat(order.getMember()).isSameAs(member);
+        assertThat(member.getOrderList()).containsExactly(order);
+    }
+
+    @Test
+    @DisplayName("OrderProduct 생성자로 생성 시 Order와 양방향 연관관계가 생성되는지 확인")
+    void orderProduct_related_to_order() {
+        var order = createOrder();
+        var product = createProduct();
+        var orderProduct = OrderProduct.builder()
+                .order(order)
+                .product(product)
+                .orderPrice(10_000L)
+                .quantity(100L)
+                .build();
+
+        assertThat(order.getOrderProductList()).containsExactly(orderProduct);
+        assertThat(orderProduct.getOrder()).isSameAs(order);
+    }
+
+    private Order createOrder() {
+        var member = Member.builder()
+                .name("name")
+                .email("test@example.com")
+                .build();
+
+        return new Order(member);
+    }
+
+    private Product createProduct() {
+        return Product.builder()
+                .name("product1")
+                .price(10_000L)
+                .stockQuantity(100L)
+                .build();
     }
 }
