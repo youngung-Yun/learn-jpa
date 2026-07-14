@@ -4,6 +4,7 @@ import com.example.learnjpa.member.MemberRepository;
 import com.example.learnjpa.order.dto.request.OrderCancelRequest;
 import com.example.learnjpa.order.dto.request.OrderCreateRequest;
 import com.example.learnjpa.order.dto.request.OrderDeliverRequest;
+import com.example.learnjpa.order.dto.response.OrderDetailsResponse;
 import com.example.learnjpa.order.repository.OrderRepository;
 import com.example.learnjpa.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -79,5 +80,21 @@ public class OrderService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("유효하지 않은 Order id입니다: %d".formatted(request.orderId())));
         order.deliver();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDetailsResponse getOrderDetailsNormally(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow();
+
+        return OrderDetailsResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDetailsResponse getOrderDetailsWithFetchJoin(Long orderId) {
+        Order order = orderRepository.findDetailById(orderId)
+                .orElseThrow();
+
+        return OrderDetailsResponse.from(order);
     }
 }

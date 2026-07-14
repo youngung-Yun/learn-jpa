@@ -5,6 +5,7 @@ import com.example.learnjpa.member.Member;
 import com.example.learnjpa.member.MemberRepository;
 import com.example.learnjpa.order.dto.request.OrderCancelRequest;
 import com.example.learnjpa.order.dto.request.OrderCreateRequest;
+import com.example.learnjpa.order.dto.response.OrderDetailsResponse;
 import com.example.learnjpa.order.exception.InvalidOrderStatusException;
 import com.example.learnjpa.order.repository.OrderRepository;
 import com.example.learnjpa.product.Product;
@@ -151,6 +152,146 @@ class OrderServiceIntegrationTest {
         assertThat(foundProduct2.getStockQuantity()).isEqualTo(product2Quantity);
     }
 
+    /*
+    2026-07-15T01:17:33.110+09:00 DEBUG 27048 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        o1_0.id,
+        o1_0.ordered_at,
+        o1_0.member_id,
+        o1_0.status,
+        o1_0.updated_at
+    from
+        orders o1_0
+    where
+        o1_0.id=?
+2026-07-15T01:17:33.135+09:00 DEBUG 27048 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        opl1_0.order_id,
+        opl1_0.id,
+        opl1_0.order_price,
+        opl1_0.product_id,
+        opl1_0.quantity
+    from
+        order_products opl1_0
+    where
+        opl1_0.order_id=?
+2026-07-15T01:17:33.139+09:00 DEBUG 27048 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.name,
+        p1_0.price,
+        p1_0.stock_quantity,
+        p1_0.updated_at
+    from
+        products p1_0
+    where
+        p1_0.id=?
+2026-07-15T01:17:33.141+09:00 DEBUG 27048 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.name,
+        p1_0.price,
+        p1_0.stock_quantity,
+        p1_0.updated_at
+    from
+        products p1_0
+    where
+        p1_0.id=?
+2026-07-15T01:17:33.142+09:00 DEBUG 27048 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.name,
+        p1_0.price,
+        p1_0.stock_quantity,
+        p1_0.updated_at
+    from
+        products p1_0
+    where
+        p1_0.id=?
+2026-07-15T01:17:33.145+09:00 DEBUG 27048 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        m1_0.id,
+        m1_0.created_at,
+        m1_0.email,
+        m1_0.name,
+        m1_0.updated_at
+    from
+        members m1_0
+    where
+        m1_0.id=?
+
+     쿼리 6번 조회
+     */
+    @Test
+    @DisplayName("일반 주문 상세 조회")
+    void general_find_order_details() {
+        Long orderId = createOrderWithSeveralProducts();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        OrderDetailsResponse response =
+                orderService.getOrderDetailsNormally(orderId);
+
+        assertThat(response.products()).hasSize(3);
+    }
+    /*
+    2026-07-15T01:16:54.063+09:00 DEBUG 27892 --- [learn-jpa] [    Test worker] org.hibernate.SQL                        :
+    select
+        distinct o1_0.id,
+        o1_0.ordered_at,
+        o1_0.member_id,
+        m1_0.id,
+        m1_0.created_at,
+        m1_0.email,
+        m1_0.name,
+        m1_0.updated_at,
+        opl1_0.order_id,
+        opl1_0.id,
+        opl1_0.order_price,
+        opl1_0.product_id,
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.name,
+        p1_0.price,
+        p1_0.stock_quantity,
+        p1_0.updated_at,
+        opl1_0.quantity,
+        o1_0.status,
+        o1_0.updated_at
+    from
+        orders o1_0
+    join
+        members m1_0
+            on m1_0.id=o1_0.member_id
+    join
+        order_products opl1_0
+            on o1_0.id=opl1_0.order_id
+    join
+        products p1_0
+            on p1_0.id=opl1_0.product_id
+    where
+        o1_0.id=?
+
+     쿼리 1회 실행
+     */
+    @Test
+    @DisplayName("Fetch Join 주문 상세 조회")
+    void fetch_join_find_order_details() {
+        Long orderId = createOrderWithSeveralProducts();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        OrderDetailsResponse response =
+                orderService.getOrderDetailsWithFetchJoin(orderId);
+
+        assertThat(response.products()).hasSize(3);
+    }
+
     private Member createAndSaveMember(String name, String email) {
         var member = Member.builder()
                 .name(name)
@@ -183,5 +324,50 @@ class OrderServiceIntegrationTest {
 
         return orderRepository.findById(orderId)
                 .orElseThrow();
+    }
+
+    private Long createOrderWithSeveralProducts() {
+        var member = createAndSaveMember(
+                "member",
+                "several-products@example.com"
+        );
+
+        var keyboard = createAndSaveProduct(
+                "키보드",
+                50_000L,
+                10L
+        );
+
+        var mouse = createAndSaveProduct(
+                "마우스",
+                30_000L,
+                10L
+        );
+
+        var monitor = createAndSaveProduct(
+                "모니터",
+                200_000L,
+                10L
+        );
+
+        var request = new OrderCreateRequest(
+                member.getId(),
+                List.of(
+                        new OrderCreateRequest.OrderCreateProductRequest(
+                                keyboard.getId(),
+                                2L
+                        ),
+                        new OrderCreateRequest.OrderCreateProductRequest(
+                                mouse.getId(),
+                                1L
+                        ),
+                        new OrderCreateRequest.OrderCreateProductRequest(
+                                monitor.getId(),
+                                1L
+                        )
+                )
+        );
+
+        return orderService.createOrder(request);
     }
 }
