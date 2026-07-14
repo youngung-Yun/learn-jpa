@@ -2,6 +2,7 @@ package com.example.learnjpa.product;
 
 import com.example.learnjpa.common.AuditingEntity;
 import com.example.learnjpa.order.OrderProduct;
+import com.example.learnjpa.product.exception.InsufficientStockException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -38,5 +39,16 @@ public class Product extends AuditingEntity {
         this.name = name;
         this.price = price;
         this.stockQuantity = stockQuantity;
+    }
+
+    public void increaseStockQuantity(long increase) {
+        this.stockQuantity += increase;
+    }
+
+    public void decreaseStockQuantity(long decrease) {
+        if (this.stockQuantity < decrease) {
+            throw new InsufficientStockException();
+        }
+        stockQuantity -= decrease;
     }
 }
