@@ -12,7 +12,7 @@ spring:
   jpa:
     hibernate:
       # schema.sql이 스키마를 생성하고 Hibernate는 엔티티 매핑 일치 여부만 확인한다.
-      # Flyway 도입 후에도 validate를 유지하고 schema.sql 실행만 비활성화한다.
+      # Flyway 도입 후에도 validate를 유지하고 V1__init.sql 실행만 비활성화한다.
       ddl-auto: validate
     properties:
       hibernate:
@@ -20,9 +20,9 @@ spring:
 
   sql:
     init:
-      # 인메모리 H2를 사용할 때 schema.sql 다음에 data.sql을 실행한다.
+      # 인메모리 H2를 사용할 때 V1__init.sql 다음에 data.sql을 실행한다.
       # 테스트에서는 src/test/resources/application.yaml에서 비활성화한다.
-      mode: embedded
+      mode: never
 
 logging:
   level:
