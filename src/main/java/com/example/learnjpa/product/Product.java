@@ -8,12 +8,14 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "products")
+@BatchSize(size = 100)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Product extends AuditingEntity {

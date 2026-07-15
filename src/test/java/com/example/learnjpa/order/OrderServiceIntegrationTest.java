@@ -224,6 +224,53 @@ class OrderServiceIntegrationTest {
         m1_0.id=?
 
      쿼리 6번 조회
+     ---
+     2026-07-15T10:31:33.083+09:00 DEBUG 11524 --- [    Test worker] org.hibernate.SQL                        :
+    select
+        o1_0.id,
+        o1_0.ordered_at,
+        o1_0.member_id,
+        o1_0.status,
+        o1_0.updated_at
+    from
+        orders o1_0
+    where
+        o1_0.id=?
+2026-07-15T10:31:33.121+09:00 DEBUG 11524 --- [    Test worker] org.hibernate.SQL                        :
+    select
+        opl1_0.order_id,
+        opl1_0.id,
+        opl1_0.order_price,
+        opl1_0.product_id,
+        opl1_0.quantity
+    from
+        order_products opl1_0
+    where
+        opl1_0.order_id=?
+2026-07-15T10:31:33.132+09:00 DEBUG 11524 --- [    Test worker] org.hibernate.SQL                        :
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.name,
+        p1_0.price,
+        p1_0.stock_quantity,
+        p1_0.updated_at
+    from
+        products p1_0
+    where
+        p1_0.id in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-07-15T10:31:33.144+09:00 DEBUG 11524 --- [    Test worker] org.hibernate.SQL                        :
+    select
+        m1_0.id,
+        m1_0.created_at,
+        m1_0.email,
+        m1_0.name,
+        m1_0.updated_at
+    from
+        members m1_0
+    where
+        m1_0.id=?
+     @BatchSize : 쿼리 4번 실행
      */
     @Test
     @DisplayName("일반 주문 상세 조회")
@@ -288,6 +335,59 @@ class OrderServiceIntegrationTest {
 
         OrderDetailsResponse response =
                 orderService.getOrderDetailsWithFetchJoin(orderId);
+
+        assertThat(response.products()).hasSize(3);
+    }
+
+    /*
+    2026-07-15T10:25:35.614+09:00 DEBUG 29264 --- [    Test worker] org.hibernate.SQL                        :
+    select
+        distinct o1_0.id,
+        o1_0.ordered_at,
+        o1_0.member_id,
+        m1_0.id,
+        m1_0.created_at,
+        m1_0.email,
+        m1_0.name,
+        m1_0.updated_at,
+        opl1_0.order_id,
+        opl1_0.id,
+        opl1_0.order_price,
+        opl1_0.product_id,
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.name,
+        p1_0.price,
+        p1_0.stock_quantity,
+        p1_0.updated_at,
+        opl1_0.quantity,
+        o1_0.status,
+        o1_0.updated_at
+    from
+        orders o1_0
+    join
+        members m1_0
+            on m1_0.id=o1_0.member_id
+    join
+        order_products opl1_0
+            on o1_0.id=opl1_0.order_id
+    join
+        products p1_0
+            on p1_0.id=opl1_0.product_id
+    where
+        o1_0.id=?
+    쿼리 1회 실행
+     */
+    @Test
+    @DisplayName("Entity Graph 주문 상세 조회")
+    void entity_graph_find_order_details() {
+        Long orderId = createOrderWithSeveralProducts();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        OrderDetailsResponse response =
+                orderService.getOrderDetailsWithEntityGraph(orderId);
 
         assertThat(response.products()).hasSize(3);
     }

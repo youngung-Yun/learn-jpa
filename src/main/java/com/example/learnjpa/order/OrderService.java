@@ -97,4 +97,12 @@ public class OrderService {
 
         return OrderDetailsResponse.from(order);
     }
+
+    @Transactional(readOnly = true)
+    public OrderDetailsResponse getOrderDetailsWithEntityGraph(Long orderId) {
+        Order order = orderRepository.findDetailWithEntityGraphById(orderId)
+                .orElseThrow();
+
+        return OrderDetailsResponse.from(order);
+    }
 }

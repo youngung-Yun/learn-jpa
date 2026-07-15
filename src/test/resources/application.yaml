@@ -7,9 +7,19 @@ spring:
 
   jpa:
     hibernate:
+      # schema.sql이 스키마를 생성하고 Hibernate는 엔티티 매핑 일치 여부만 확인한다.
+      # Flyway 도입 후에도 validate를 유지하고 schema.sql 실행만 비활성화한다.
       ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
 
   sql:
     init:
       # 개발용 data.sql이 독립적인 Repository/서비스 테스트를 오염시키지 않게 한다.
       mode: never
+
+logging:
+  level:
+    org.hibernate.SQL: TRACE
+    org.hibernate.jdbc.bind: TRACE
